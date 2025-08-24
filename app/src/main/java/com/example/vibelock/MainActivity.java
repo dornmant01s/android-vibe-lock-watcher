@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.content.pm.PackageManager;
 import android.Manifest;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private static final int REQ_POST_NOTI = 1001;
@@ -14,25 +15,40 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (Build.VERSION.SDK_INT >= 33) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_POST_NOTI);
-                return;
+        // 전역 예외 핸들러: 크래시 메시지를 토스트로 표시
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            e.printStackTrace();
+            Toast.makeText(getApplicationContext(), "CRASH: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        });
+
+        try {
+            if (Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_POST_NOTI);
+                    return;
+                }
             }
+            startSvcAndFinish();
+        } catch (Throwable e) {
+            Toast.makeText(this, "Main init error: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
         }
-        startSvcAndFinish();
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
-        startSvcAndFinish(); // 허용/거부 상관없이 서비스 시도(거부해도 포그라운드 알림은 보이는 기종이 많음)
+        startSvcAndFinish();
     }
 
     private void startSvcAndFinish() {
-        Intent serviceIntent = new Intent(this, VibeService.class);
-        startForegroundService(serviceIntent);
-        finish();
+        try {
+            Intent serviceIntent = new Intent(this, VibeService.class);
+            startForegroundService(serviceIntent);
+        } catch (Throwable e) {
+            Toast.makeText(this, "startSvc error: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        } finally {
+            finish();
+        }
     }
 }
