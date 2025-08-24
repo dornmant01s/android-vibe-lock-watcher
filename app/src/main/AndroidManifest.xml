@@ -5,9 +5,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
-        android:allowBackup="true"
-        android:label="VibeLockWatcher"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+    android:allowBackup="true"
+    android:label="VibeLockWatcher"
+    android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
             android:name=".MainActivity"
