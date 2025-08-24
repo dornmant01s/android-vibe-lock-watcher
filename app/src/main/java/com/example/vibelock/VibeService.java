@@ -12,70 +12,83 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
 public class VibeService extends Service {
     private Vibrator vibrator;
     private BroadcastReceiver screenReceiver;
+    private NotificationManager nm;
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         createNotificationChannel();
-
-        Notification notification = new NotificationCompat.Builder(this, "vibe_channel")
-                .setContentTitle("VibeLockWatcher")
-                .setContentText("Running in background")
-                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-                .setOngoing(true)
-                .build();
-        startForeground(1, notification);
+        startForeground(1, buildNotif("Idle"));
 
         screenReceiver = new BroadcastReceiver() {
             @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent.getAction();
-
-                if (Intent.ACTION_USER_PRESENT.equals(action)) {
-                    // 잠금 해제됨 → 연속 진동 시작
+            public void onReceive(Context c, Intent i) {
+                String a = i.getAction();
+                if (Intent.ACTION_USER_PRESENT.equals(a)) {
+                    show("USER_PRESENT → 진동 시작");
                     startContinuousVibration();
-                } else if (Intent.ACTION_SCREEN_OFF.equals(action)
-                        || Intent.ACTION_SCREEN_ON.equals(action)) {
-                    // 화면 꺼짐 또는 켜짐(잠금화면 진입) → 진동 중지
+                    updateNotif("Vibrating (unlocked)");
+                } else if (Intent.ACTION_SCREEN_OFF.equals(a)) {
+                    show("SCREEN_OFF → 진동 중지");
                     stopVibration();
+                    updateNotif("Stopped (screen off)");
+                } else if (Intent.ACTION_SCREEN_ON.equals(a)) {
+                    show("SCREEN_ON → 진동 중지");
+                    stopVibration();
+                    updateNotif("Stopped (screen on/lock)");
                 }
             }
         };
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_USER_PRESENT);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        registerReceiver(screenReceiver, filter);
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        f.addAction(Intent.ACTION_SCREEN_OFF);
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        registerReceiver(screenReceiver, f);
     }
 
     private void startContinuousVibration() {
         if (vibrator == null || !vibrator.hasVibrator()) return;
 
+        // 끊김 없는 반복 진동: waveform 반복
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // 사실상 '지속 진동' – 아주 긴 one-shot(예: 24시간)으로 처리
-            VibrationEffect effect = VibrationEffect.createOneShot(
-                    24L * 60L * 60L * 1000L,  // 24시간
-                    VibrationEffect.DEFAULT_AMPLITUDE
-            );
+            long[] timings = new long[]{0, 1000, 50}; // 시작지연0, 1초진동, 50ms쉼
+            int[] amps = new int[]{0, 255, 0};        // 진동 구간만 강하게
+            VibrationEffect effect = VibrationEffect.createWaveform(timings, amps, 0);
             vibrator.vibrate(effect);
         } else {
-            // 구형용(패턴 반복)
-            long[] pattern = new long[]{0, 1000};
-            vibrator.vibrate(pattern, 0);
+            vibrator.vibrate(new long[]{0, 1000, 50}, 0);
         }
     }
 
     private void stopVibration() {
         if (vibrator != null) vibrator.cancel();
+    }
+
+    private Notification buildNotif(String text) {
+        return new NotificationCompat.Builder(this, "vibe_channel")
+                .setContentTitle("VibeLockWatcher")
+                .setContentText(text)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setOngoing(true)
+                .build();
+    }
+
+    private void updateNotif(String text) {
+        nm.notify(1, buildNotif(text));
+    }
+
+    private void show(String msg) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -86,18 +99,17 @@ public class VibeService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
+            NotificationChannel ch = new NotificationChannel(
                     "vibe_channel", "VibeLockWatcher",
                     NotificationManager.IMPORTANCE_LOW
             );
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            nm.createNotificationChannel(ch);
         }
     }
 }
+
 
