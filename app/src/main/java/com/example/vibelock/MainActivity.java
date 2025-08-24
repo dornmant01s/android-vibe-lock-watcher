@@ -1,15 +1,14 @@
 package com.example.vibelock;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 앱 시작 시 바로 서비스 실행
         Intent serviceIntent = new Intent(this, VibeService.class);
         startForegroundService(serviceIntent);
 
