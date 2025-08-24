@@ -21,7 +21,9 @@
         </activity>
 
         <service
-            android:name=".VibeService"
-            android:exported="false"/>
+    android:name=".VibeService"
+    android:exported="false"
+    android:foregroundServiceType="mediaPlayback"/>
+
     </application>
 </manifest>
