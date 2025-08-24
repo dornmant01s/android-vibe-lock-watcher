@@ -2,10 +2,10 @@ package com.example.vibelock;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
-import android.content.pm.PackageManager;
-import android.Manifest;
+import android.widget.Button;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.provider.Settings;
 import android.view.accessibility.AccessibilityManager;
@@ -13,7 +13,10 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.pm.ServiceInfo;
 
 public class MainActivity extends Activity {
-    private static final int REQ_POST_NOTI = 1001;
+    private SeekBar ampSeek;
+    private SeekBar lenSeek;
+    private TextView ampText;
+    private TextView lenText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,43 +28,50 @@ public class MainActivity extends Activity {
             Toast.makeText(getApplicationContext(), "CRASH: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
         });
 
-        try {
-            if (Build.VERSION.SDK_INT >= 33 &&
-                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_POST_NOTI);
-                return;
+        setContentView(R.layout.activity_main);
+
+        ampSeek = findViewById(R.id.seek_amp);
+        lenSeek = findViewById(R.id.seek_len);
+        ampText = findViewById(R.id.text_amp);
+        lenText = findViewById(R.id.text_len);
+        Button btn = findViewById(R.id.btn_start);
+
+        ampText.setText(getString(R.string.label_amp, ampSeek.getProgress()));
+        lenText.setText(getString(R.string.label_len, lenSeek.getProgress()));
+
+        ampSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                ampText.setText(getString(R.string.label_amp, progress));
             }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        lenSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                lenText.setText(getString(R.string.label_len, progress));
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        btn.setOnClickListener(v -> {
             if (!isAccessibilityEnabled()) {
                 Toast.makeText(this, "Enable accessibility permission", Toast.LENGTH_LONG).show();
                 startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
                 return;
             }
-            startSvcAndFinish();
+            Intent serviceIntent = new Intent(this, VibeService.class);
+            serviceIntent.putExtra("amp", ampSeek.getProgress());
+            serviceIntent.putExtra("len", lenSeek.getProgress());
+            startService(serviceIntent);
+            Toast.makeText(this, "Service started", Toast.LENGTH_SHORT).show();
+        });
+
+        try {
+            // Additional init if needed
         } catch (Throwable e) {
             Toast.makeText(this, "Main init error: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
-        super.onRequestPermissionsResult(code, perms, res);
-        if (!isAccessibilityEnabled()) {
-            Toast.makeText(this, "Enable accessibility permission", Toast.LENGTH_LONG).show();
-            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            return;
-        }
-        startSvcAndFinish();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (Build.VERSION.SDK_INT >= 33 &&
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        if (isAccessibilityEnabled()) {
-            startSvcAndFinish();
         }
     }
 
@@ -76,16 +86,5 @@ public class MainActivity extends Activity {
             }
         }
         return false;
-    }
-
-    private void startSvcAndFinish() {
-        try {
-            Intent serviceIntent = new Intent(this, VibeService.class);
-            startForegroundService(serviceIntent);
-        } catch (Throwable e) {
-            Toast.makeText(this, "startSvc error: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
-        } finally {
-            finish();
-        }
     }
 }

@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">VibeLockWatcher</string>
     <string name="accessibility_service_desc">VibeLockWatcher accessibility service</string>
+    <string name="label_amp">Amplitude: %1$d</string>
+    <string name="label_len">Length(ms): %1$d</string>
+    <string name="btn_start">Start Service</string>
 </resources>
