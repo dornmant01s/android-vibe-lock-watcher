@@ -20,10 +20,11 @@
             </intent-filter>
         </activity>
 
-        <service
+     <service
     android:name=".VibeService"
     android:exported="false"
-    android:foregroundServiceType="mediaPlayback"/>
+    android:foregroundServiceType="specialUse"/>
+
 
     </application>
 </manifest>
