@@ -20,6 +20,6 @@
         <service
             android:name=".VibeService"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice|mediaProjection|location"/>
+            />
     </application>
 </manifest>
